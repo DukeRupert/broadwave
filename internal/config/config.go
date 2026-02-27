@@ -12,6 +12,13 @@ type Config struct {
 	Database  DatabaseConfig  `toml:"database"`
 	Postmark  PostmarkConfig  `toml:"postmark"`
 	Subscribe SubscribeConfig `toml:"subscribe"`
+	Admin     AdminConfig     `toml:"admin"`
+}
+
+type AdminConfig struct {
+	Username     string `toml:"username"`
+	PasswordHash string `toml:"password_hash"`
+	SessionTTL   string `toml:"session_ttl"`
 }
 
 type AppConfig struct {
@@ -46,6 +53,10 @@ func Load(path string) (*Config, error) {
 		},
 		Subscribe: SubscribeConfig{
 			DefaultRedirect: "/",
+		},
+		Admin: AdminConfig{
+			Username:   "admin",
+			SessionTTL: "24h",
 		},
 	}
 

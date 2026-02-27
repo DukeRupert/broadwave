@@ -12,6 +12,7 @@ type Templates struct {
 	SubscribeError   *template.Template
 	ConfirmSuccess   *template.Template
 	AlreadyConfirmed *template.Template
+	Unsubscribed     *template.Template
 	Error            *template.Template
 }
 

@@ -16,6 +16,17 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (a *AdminDeps) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("broadwave_session")
+		if err != nil || !a.Sessions.Valid(cookie.Value) {
+			http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func extractIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		// Take the first IP in the chain

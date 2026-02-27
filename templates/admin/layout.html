@@ -1,0 +1,31 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadwave Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-14 items-center">
+                <div class="flex items-center space-x-6">
+                    <a href="/admin/" class="text-lg font-bold text-gray-800">Broadwave</a>
+                    <a href="/admin/" class="text-sm text-gray-600 hover:text-gray-900">Dashboard</a>
+                </div>
+                <form method="POST" action="/admin/logout">
+                    <button type="submit" class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {{block "content" .}}{{end}}
+    </main>
+</body>
+</html>
+{{end}}

@@ -31,3 +31,29 @@ type Subscriber struct {
 	UnsubscribedAt   *time.Time
 	CreatedAt        time.Time
 }
+
+type ListWithCount struct {
+	List
+	ConfirmedCount int
+}
+
+type SubscriberRow struct {
+	ID               int64
+	Email            string
+	Name             string
+	Status           SubscriberStatus
+	UnsubscribeToken string
+	SubscribedAt     *time.Time
+	ConfirmedAt      *time.Time
+	UnsubscribedAt   *time.Time
+	CreatedAt        time.Time
+}
+
+type MessageSummary struct {
+	ID        int64
+	ListName  string
+	Subject   string
+	Status    string
+	SentCount int
+	CreatedAt time.Time
+}

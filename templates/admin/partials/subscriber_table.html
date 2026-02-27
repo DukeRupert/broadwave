@@ -1,0 +1,44 @@
+{{define "subscriber_table"}}
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscribed</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {{range .Subscribers}}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{.Email}}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{.Name}}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        {{if eq (printf "%s" .Status) "confirmed"}}bg-green-100 text-green-800
+                        {{else if eq (printf "%s" .Status) "pending"}}bg-yellow-100 text-yellow-800
+                        {{else}}bg-red-100 text-red-800{{end}}">
+                        {{.Status}}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {{if .SubscribedAt}}{{.SubscribedAt.Format "Jan 02, 2006"}}{{end}}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <form method="POST" action="/admin/lists/{{$.List.ID}}/subscribers/{{.ID}}/remove"
+                        onsubmit="return confirm('Remove this subscriber from the list?')">
+                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="5" class="px-6 py-4 text-sm text-gray-500 text-center">No subscribers found.</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

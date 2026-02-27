@@ -99,6 +99,187 @@ func (q *Queries) UpdateConfirmToken(ctx context.Context, subscriberID int64, to
 	return err
 }
 
+func (q *Queries) GetAllListsWithCounts(ctx context.Context) ([]model.ListWithCount, error) {
+	rows, err := q.DB.QueryContext(ctx, `
+		SELECT l.id, l.slug, l.name, l.description, l.from_name, l.from_email, l.created_at,
+		       COUNT(CASE WHEN s.status = 'confirmed' THEN 1 END) AS confirmed_count
+		FROM lists l
+		LEFT JOIN list_subscribers ls ON l.id = ls.list_id
+		LEFT JOIN subscribers s ON ls.subscriber_id = s.id
+		GROUP BY l.id
+		ORDER BY l.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var lists []model.ListWithCount
+	for rows.Next() {
+		var lc model.ListWithCount
+		var desc sql.NullString
+		var createdAt string
+		err := rows.Scan(&lc.ID, &lc.Slug, &lc.Name, &desc, &lc.FromName, &lc.FromEmail, &createdAt, &lc.ConfirmedCount)
+		if err != nil {
+			return nil, err
+		}
+		lc.Description = desc.String
+		lc.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+		lists = append(lists, lc)
+	}
+	return lists, rows.Err()
+}
+
+func (q *Queries) GetListByID(ctx context.Context, id int64) (*model.List, error) {
+	row := q.DB.QueryRowContext(ctx, `
+		SELECT id, slug, name, description, from_name, from_email, created_at
+		FROM lists WHERE id = ?`, id)
+
+	var l model.List
+	var desc sql.NullString
+	var createdAt string
+	err := row.Scan(&l.ID, &l.Slug, &l.Name, &desc, &l.FromName, &l.FromEmail, &createdAt)
+	if err != nil {
+		return nil, err
+	}
+	l.Description = desc.String
+	l.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+	return &l, nil
+}
+
+func (q *Queries) GetSubscribersByList(ctx context.Context, listID int64, statusFilter string) ([]model.SubscriberRow, error) {
+	query := `
+		SELECT s.id, s.email, s.name, s.status, s.unsubscribe_token,
+		       ls.subscribed_at, s.confirmed_at, s.unsubscribed_at, s.created_at
+		FROM subscribers s
+		JOIN list_subscribers ls ON s.id = ls.subscriber_id
+		WHERE ls.list_id = ?`
+	args := []any{listID}
+
+	if statusFilter != "" {
+		query += ` AND s.status = ?`
+		args = append(args, statusFilter)
+	}
+	query += ` ORDER BY ls.subscribed_at DESC`
+
+	rows, err := q.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var subs []model.SubscriberRow
+	for rows.Next() {
+		var sr model.SubscriberRow
+		var name sql.NullString
+		var subscribedAt, confirmedAt, unsubscribedAt, createdAt sql.NullString
+		err := rows.Scan(&sr.ID, &sr.Email, &name, &sr.Status, &sr.UnsubscribeToken,
+			&subscribedAt, &confirmedAt, &unsubscribedAt, &createdAt)
+		if err != nil {
+			return nil, err
+		}
+		sr.Name = name.String
+		if subscribedAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", subscribedAt.String)
+			sr.SubscribedAt = &t
+		}
+		if confirmedAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", confirmedAt.String)
+			sr.ConfirmedAt = &t
+		}
+		if unsubscribedAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", unsubscribedAt.String)
+			sr.UnsubscribedAt = &t
+		}
+		if createdAt.Valid {
+			sr.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt.String)
+		}
+		subs = append(subs, sr)
+	}
+	return subs, rows.Err()
+}
+
+func (q *Queries) GetRecentMessages(ctx context.Context, limit int) ([]model.MessageSummary, error) {
+	rows, err := q.DB.QueryContext(ctx, `
+		SELECT m.id, l.name, m.subject, m.status, m.sent_count, m.created_at
+		FROM messages m
+		JOIN lists l ON m.list_id = l.id
+		ORDER BY m.created_at DESC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []model.MessageSummary
+	for rows.Next() {
+		var ms model.MessageSummary
+		var createdAt string
+		err := rows.Scan(&ms.ID, &ms.ListName, &ms.Subject, &ms.Status, &ms.SentCount, &createdAt)
+		if err != nil {
+			return nil, err
+		}
+		ms.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+		msgs = append(msgs, ms)
+	}
+	return msgs, rows.Err()
+}
+
+func (q *Queries) CreateSubscriberConfirmed(ctx context.Context, email, name, unsubToken string) (int64, error) {
+	result, err := q.DB.ExecContext(ctx, `
+		INSERT INTO subscribers (email, name, status, unsubscribe_token, confirmed_at)
+		VALUES (?, ?, 'confirmed', ?, datetime('now'))`, email, name, unsubToken)
+	if err != nil {
+		return 0, fmt.Errorf("creating confirmed subscriber: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+func (q *Queries) RemoveSubscriberFromList(ctx context.Context, listID, subscriberID int64) error {
+	_, err := q.DB.ExecContext(ctx, `
+		DELETE FROM list_subscribers WHERE list_id = ? AND subscriber_id = ?`, listID, subscriberID)
+	return err
+}
+
+func (q *Queries) ReactivateSubscriber(ctx context.Context, subscriberID int64) error {
+	_, err := q.DB.ExecContext(ctx, `
+		UPDATE subscribers
+		SET status = 'confirmed', unsubscribed_at = NULL, confirmed_at = datetime('now')
+		WHERE id = ?`, subscriberID)
+	return err
+}
+
+func (q *Queries) GetSubscriberByUnsubscribeToken(ctx context.Context, token string) (*model.Subscriber, error) {
+	row := q.DB.QueryRowContext(ctx, `
+		SELECT id, email, name, status, confirm_token, unsubscribe_token,
+		       confirmed_at, unsubscribed_at, created_at
+		FROM subscribers WHERE unsubscribe_token = ?`, token)
+	return scanSubscriber(row)
+}
+
+func (q *Queries) UnsubscribeGlobal(ctx context.Context, subscriberID int64) error {
+	tx, err := q.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE subscribers
+		SET status = 'unsubscribed', unsubscribed_at = datetime('now')
+		WHERE id = ?`, subscriberID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		DELETE FROM list_subscribers WHERE subscriber_id = ?`, subscriberID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func scanSubscriber(row *sql.Row) (*model.Subscriber, error) {
 	var s model.Subscriber
 	var name, confirmToken sql.NullString

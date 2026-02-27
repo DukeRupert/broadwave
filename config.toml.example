@@ -11,3 +11,9 @@ message_stream = "outbound"
 
 [subscribe]
 default_redirect = "/"
+
+[admin]
+username = "admin"
+# Generate with: htpasswd -nbBC 10 "" 'your-password' | cut -d: -f2
+password_hash = ""
+session_ttl = "24h"
