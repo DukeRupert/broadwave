@@ -20,6 +20,10 @@ func isHTMX(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
 }
 
+func isCrossOrigin(r *http.Request) bool {
+	return r.Header.Get("Origin") != ""
+}
+
 func isJSON(r *http.Request) bool {
 	ct := r.Header.Get("Content-Type")
 	accept := r.Header.Get("Accept")
@@ -33,7 +37,7 @@ func respondSuccess(w http.ResponseWriter, r *http.Request, tmpl *template.Templ
 		return
 	}
 
-	if isJSON(r) {
+	if isJSON(r) || isCrossOrigin(r) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(jsonData)
 		return
@@ -50,7 +54,7 @@ func respondError(w http.ResponseWriter, r *http.Request, tmpl *template.Templat
 		return
 	}
 
-	if isJSON(r) {
+	if isJSON(r) || isCrossOrigin(r) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
 		json.NewEncoder(w).Encode(map[string]string{"error": message})
