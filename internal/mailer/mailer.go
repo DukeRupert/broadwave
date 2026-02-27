@@ -89,6 +89,19 @@ func (m *Mailer) Send(email Email) (*SendResponse, error) {
 	return &result, nil
 }
 
+// IsHardBounce returns true if the Postmark response indicates a permanent
+// delivery failure (invalid email or inactive recipient).
+func IsHardBounce(resp *SendResponse) bool {
+	if resp == nil {
+		return false
+	}
+	switch resp.ErrorCode {
+	case 300, 406:
+		return true
+	}
+	return false
+}
+
 func (m *Mailer) SendConfirmation(to, fromName, fromEmail, listName, confirmURL string) error {
 	subject := fmt.Sprintf("Confirm your signup — %s", listName)
 	textBody := fmt.Sprintf(`Hey,

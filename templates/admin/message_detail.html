@@ -21,7 +21,7 @@
 </div>
 
 <!-- Send stats -->
-<div class="grid grid-cols-3 gap-4 mb-6">
+<div class="grid grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow p-4 text-center">
         <p class="text-2xl font-bold text-gray-800">{{.TotalCount}}</p>
         <p class="text-sm text-gray-500">Total</p>
@@ -33,6 +33,10 @@
     <div class="bg-white rounded-lg shadow p-4 text-center">
         <p class="text-2xl font-bold text-red-600">{{.FailedCount}}</p>
         <p class="text-sm text-gray-500">Failed</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 text-center">
+        <p class="text-2xl font-bold text-orange-600">{{.BouncedCount}}</p>
+        <p class="text-sm text-gray-500">Bounced</p>
     </div>
 </div>
 
@@ -57,11 +61,12 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             {{range .LogEntries}}
-            <tr class="{{if eq .Status "failed"}}bg-red-50{{end}}">
+            <tr class="{{if eq .Status "failed"}}bg-red-50{{else if eq .Status "bounced"}}bg-orange-50{{end}}">
                 <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">{{.Email}}</td>
                 <td class="px-6 py-3 whitespace-nowrap">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
                         {{if eq .Status "sent"}}bg-green-100 text-green-800
+                        {{else if eq .Status "bounced"}}bg-orange-100 text-orange-800
                         {{else if eq .Status "failed"}}bg-red-100 text-red-800
                         {{else}}bg-gray-100 text-gray-800{{end}}">
                         {{.Status}}

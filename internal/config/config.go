@@ -32,7 +32,8 @@ type AppConfig struct {
 }
 
 type DatabaseConfig struct {
-	Path string `toml:"path"`
+	Path      string `toml:"path"`
+	BackupDir string `toml:"backup_dir"`
 }
 
 type PostmarkConfig struct {

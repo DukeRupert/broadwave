@@ -184,11 +184,21 @@ func (a *AdminDeps) sendMessage(msg *model.Message, list *model.List, subscriber
 			},
 		}
 
-		_, sendErr := a.Mailer.Send(email)
+		resp, sendErr := a.Mailer.Send(email)
 		if sendErr != nil {
 			log.Printf("Error sending to %s: %v", sub.Email, sendErr)
-			if err := a.Queries.UpdateSendLogEntry(ctx, logID, "failed", sendErr.Error()); err != nil {
-				log.Printf("Error updating send log: %v", err)
+			if mailer.IsHardBounce(resp) {
+				if err := a.Queries.UpdateSendLogEntry(ctx, logID, "bounced", sendErr.Error()); err != nil {
+					log.Printf("Error updating send log: %v", err)
+				}
+				if err := a.Queries.UnsubscribeGlobal(ctx, sub.ID); err != nil {
+					log.Printf("Error deactivating bounced subscriber %d: %v", sub.ID, err)
+				}
+				log.Printf("Hard bounce for %s (subscriber %d) — deactivated", sub.Email, sub.ID)
+			} else {
+				if err := a.Queries.UpdateSendLogEntry(ctx, logID, "failed", sendErr.Error()); err != nil {
+					log.Printf("Error updating send log: %v", err)
+				}
 			}
 			failCount++
 		} else {
@@ -247,18 +257,23 @@ func (a *AdminDeps) HandleMessageDetail(w http.ResponseWriter, r *http.Request) 
 	}
 
 	failedCount := 0
+	bouncedCount := 0
 	for _, e := range logEntries {
-		if e.Status == "failed" {
+		switch e.Status {
+		case "failed":
 			failedCount++
+		case "bounced":
+			bouncedCount++
 		}
 	}
 
 	data := map[string]any{
-		"Message":     msg,
-		"List":        list,
-		"LogEntries":  logEntries,
-		"TotalCount":  len(logEntries),
-		"FailedCount": failedCount,
+		"Message":      msg,
+		"List":         list,
+		"LogEntries":   logEntries,
+		"TotalCount":   len(logEntries),
+		"FailedCount":  failedCount,
+		"BouncedCount": bouncedCount,
 	}
 
 	a.Templates.MessageDetail.ExecuteTemplate(w, "layout", data)

@@ -112,6 +112,21 @@ func main() {
 		}
 	}()
 
+	// SQLite backup
+	if cfg.Database.BackupDir != "" {
+		if err := os.MkdirAll(cfg.Database.BackupDir, 0755); err != nil {
+			log.Fatalf("Failed to create backup directory: %v", err)
+		}
+		database.RunBackup(db, cfg.Database.BackupDir)
+		go func() {
+			ticker := time.NewTicker(24 * time.Hour)
+			defer ticker.Stop()
+			for range ticker.C {
+				database.RunBackup(db, cfg.Database.BackupDir)
+			}
+		}()
+	}
+
 	// Routes
 	mux := http.NewServeMux()
 
