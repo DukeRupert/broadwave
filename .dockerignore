@@ -1,0 +1,15 @@
+arnor
+broadwave
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+backups/
+.git
+.github
+.gitignore
+.env
+*.md
+LICENSE
+config.toml
+config.toml.example
