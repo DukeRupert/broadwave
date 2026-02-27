@@ -1,0 +1,13 @@
+[app]
+listen_addr = ":8090"
+base_url = "http://localhost:8090"
+
+[database]
+path = "broadwave.db"
+
+[postmark]
+server_token = "your-postmark-server-token"
+message_stream = "outbound"
+
+[subscribe]
+default_redirect = "/"
