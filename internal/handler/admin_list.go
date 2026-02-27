@@ -106,7 +106,7 @@ func (a *AdminDeps) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		"NewPrefix": prefix,
 	}
 
-	a.Templates.APIKeySection.Execute(w, data)
+	a.Templates.APIKeySection.ExecuteTemplate(w, "api_key_section", data)
 }
 
 func (a *AdminDeps) HandleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +141,7 @@ func (a *AdminDeps) HandleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
 		"APIKeys": keys,
 	}
 
-	a.Templates.APIKeySection.Execute(w, data)
+	a.Templates.APIKeySection.ExecuteTemplate(w, "api_key_section", data)
 }
 
 func (a *AdminDeps) HandleListDetail(w http.ResponseWriter, r *http.Request) {
