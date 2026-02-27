@@ -8,11 +8,16 @@ import (
 )
 
 type Config struct {
-	App       AppConfig       `toml:"app"`
-	Database  DatabaseConfig  `toml:"database"`
-	Postmark  PostmarkConfig  `toml:"postmark"`
-	Subscribe SubscribeConfig `toml:"subscribe"`
-	Admin     AdminConfig     `toml:"admin"`
+	App        AppConfig        `toml:"app"`
+	Database   DatabaseConfig   `toml:"database"`
+	Postmark   PostmarkConfig   `toml:"postmark"`
+	Subscribe  SubscribeConfig  `toml:"subscribe"`
+	Admin      AdminConfig      `toml:"admin"`
+	Compliance ComplianceConfig `toml:"compliance"`
+}
+
+type ComplianceConfig struct {
+	PhysicalAddress string `toml:"physical_address"`
 }
 
 type AdminConfig struct {

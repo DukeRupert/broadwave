@@ -356,6 +356,127 @@ func (q *Queries) GetAPIKeysByList(ctx context.Context, listID int64) ([]model.A
 	return keys, rows.Err()
 }
 
+func (q *Queries) CreateMessage(ctx context.Context, listID int64, subject, bodyText, bodyHTML string) (int64, error) {
+	result, err := q.DB.ExecContext(ctx, `
+		INSERT INTO messages (list_id, subject, body_text, body_html)
+		VALUES (?, ?, ?, ?)`, listID, subject, bodyText, bodyHTML)
+	if err != nil {
+		return 0, fmt.Errorf("creating message: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+func (q *Queries) GetMessageByID(ctx context.Context, id int64) (*model.Message, error) {
+	row := q.DB.QueryRowContext(ctx, `
+		SELECT id, list_id, subject, body_text, body_html, status, sent_at, sent_count, created_at
+		FROM messages WHERE id = ?`, id)
+
+	var m model.Message
+	var bodyHTML sql.NullString
+	var sentAt sql.NullString
+	var createdAt string
+	err := row.Scan(&m.ID, &m.ListID, &m.Subject, &m.BodyText, &bodyHTML, &m.Status, &sentAt, &m.SentCount, &createdAt)
+	if err != nil {
+		return nil, err
+	}
+	m.BodyHTML = bodyHTML.String
+	if sentAt.Valid {
+		t, _ := time.Parse("2006-01-02 15:04:05", sentAt.String)
+		m.SentAt = &t
+	}
+	m.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+	return &m, nil
+}
+
+func (q *Queries) UpdateMessageStatus(ctx context.Context, id int64, status string) error {
+	_, err := q.DB.ExecContext(ctx, `
+		UPDATE messages SET status = ? WHERE id = ?`, status, id)
+	return err
+}
+
+func (q *Queries) SetMessageSent(ctx context.Context, id int64, sentCount int) error {
+	_, err := q.DB.ExecContext(ctx, `
+		UPDATE messages SET status = 'sent', sent_at = datetime('now'), sent_count = ? WHERE id = ?`, sentCount, id)
+	return err
+}
+
+func (q *Queries) GetConfirmedSubscribersForList(ctx context.Context, listID int64) ([]model.SubscriberRow, error) {
+	return q.GetSubscribersByList(ctx, listID, "confirmed")
+}
+
+func (q *Queries) CreateSendLogEntry(ctx context.Context, messageID, subscriberID int64) (int64, error) {
+	result, err := q.DB.ExecContext(ctx, `
+		INSERT INTO send_log (message_id, subscriber_id)
+		VALUES (?, ?)`, messageID, subscriberID)
+	if err != nil {
+		return 0, fmt.Errorf("creating send log entry: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+func (q *Queries) UpdateSendLogEntry(ctx context.Context, id int64, status, errMsg string) error {
+	_, err := q.DB.ExecContext(ctx, `
+		UPDATE send_log SET status = ?, sent_at = datetime('now'), error = ? WHERE id = ?`, status, errMsg, id)
+	return err
+}
+
+func (q *Queries) GetSendLogByMessage(ctx context.Context, messageID int64) ([]model.SendLogEntry, error) {
+	rows, err := q.DB.QueryContext(ctx, `
+		SELECT sl.id, sl.message_id, sl.subscriber_id, s.email, sl.status, sl.sent_at, sl.error
+		FROM send_log sl
+		JOIN subscribers s ON sl.subscriber_id = s.id
+		WHERE sl.message_id = ?
+		ORDER BY sl.id`, messageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []model.SendLogEntry
+	for rows.Next() {
+		var e model.SendLogEntry
+		var sentAt sql.NullString
+		var errMsg sql.NullString
+		err := rows.Scan(&e.ID, &e.MessageID, &e.SubscriberID, &e.Email, &e.Status, &sentAt, &errMsg)
+		if err != nil {
+			return nil, err
+		}
+		if sentAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", sentAt.String)
+			e.SentAt = &t
+		}
+		e.Error = errMsg.String
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}
+
+func (q *Queries) GetMessagesByList(ctx context.Context, listID int64) ([]model.MessageSummary, error) {
+	rows, err := q.DB.QueryContext(ctx, `
+		SELECT m.id, l.name, m.subject, m.status, m.sent_count, m.created_at
+		FROM messages m
+		JOIN lists l ON m.list_id = l.id
+		WHERE m.list_id = ?
+		ORDER BY m.created_at DESC`, listID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []model.MessageSummary
+	for rows.Next() {
+		var ms model.MessageSummary
+		var createdAt string
+		err := rows.Scan(&ms.ID, &ms.ListName, &ms.Subject, &ms.Status, &ms.SentCount, &createdAt)
+		if err != nil {
+			return nil, err
+		}
+		ms.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+		msgs = append(msgs, ms)
+	}
+	return msgs, rows.Err()
+}
+
 func scanSubscriber(row *sql.Row) (*model.Subscriber, error) {
 	var s model.Subscriber
 	var name, confirmToken sql.NullString

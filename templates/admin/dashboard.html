@@ -46,7 +46,9 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 {{range .Messages}}
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{.Subject}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="/admin/messages/{{.ID}}" class="text-blue-600 hover:text-blue-800">{{.Subject}}</a>
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{.ListName}}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium

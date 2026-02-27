@@ -80,18 +80,25 @@ func main() {
 	adminSubscriberTable := template.Must(template.ParseFS(templateFS, "templates/admin/partials/subscriber_table.html"))
 	adminAPIKeySection := template.Must(template.ParseFS(templateFS, "templates/admin/partials/api_key_section.html"))
 
+	adminCompose := template.Must(template.Must(adminLayout.Clone()).ParseFS(templateFS, "templates/admin/compose.html"))
+	adminMessageDetail := template.Must(template.Must(adminLayout.Clone()).ParseFS(templateFS, "templates/admin/message_detail.html"))
+
 	adminDeps := &handler.AdminDeps{
-		Queries:      queries,
-		Sessions:     sessions,
-		BaseURL:      cfg.App.BaseURL,
-		Username:     cfg.Admin.Username,
-		PasswordHash: cfg.Admin.PasswordHash,
+		Queries:         queries,
+		Sessions:        sessions,
+		Mailer:          m,
+		BaseURL:         cfg.App.BaseURL,
+		PhysicalAddress: cfg.Compliance.PhysicalAddress,
+		Username:        cfg.Admin.Username,
+		PasswordHash:    cfg.Admin.PasswordHash,
 		Templates: &handler.AdminTemplates{
 			Login:               adminLogin,
 			Dashboard:           adminDashboard,
 			ListDetail:          adminListDetail,
 			ListSubscriberTable: adminSubscriberTable,
 			APIKeySection:       adminAPIKeySection,
+			Compose:             adminCompose,
+			MessageDetail:       adminMessageDetail,
 		},
 	}
 
@@ -127,6 +134,10 @@ func main() {
 	adminMux.HandleFunc("GET /admin/lists/{id}/export", adminDeps.HandleExportCSV)
 	adminMux.HandleFunc("POST /admin/lists/{id}/keys", adminDeps.HandleCreateAPIKey)
 	adminMux.HandleFunc("POST /admin/lists/{id}/keys/{keyID}/revoke", adminDeps.HandleRevokeAPIKey)
+	adminMux.HandleFunc("GET /admin/compose", adminDeps.HandleCompose)
+	adminMux.HandleFunc("POST /admin/compose/preview", adminDeps.HandleComposePreview)
+	adminMux.HandleFunc("POST /admin/compose/send", adminDeps.HandleSendMessage)
+	adminMux.HandleFunc("GET /admin/messages/{id}", adminDeps.HandleMessageDetail)
 	mux.Handle("/admin/", adminDeps.AuthMiddleware(adminMux))
 
 	srv := &http.Server{

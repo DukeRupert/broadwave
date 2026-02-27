@@ -49,6 +49,28 @@ type SubscriberRow struct {
 	CreatedAt        time.Time
 }
 
+type Message struct {
+	ID        int64
+	ListID    int64
+	Subject   string
+	BodyText  string
+	BodyHTML  string
+	Status    string // draft | sending | sent | failed
+	SentAt    *time.Time
+	SentCount int
+	CreatedAt time.Time
+}
+
+type SendLogEntry struct {
+	ID           int64
+	MessageID    int64
+	SubscriberID int64
+	Email        string // denormalized for display
+	Status       string // queued | sent | failed
+	SentAt       *time.Time
+	Error        string
+}
+
 type MessageSummary struct {
 	ID        int64
 	ListName  string

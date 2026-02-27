@@ -6,17 +6,20 @@ import (
 	"net/http"
 
 	"github.com/dukerupert/broadwave/internal/database"
+	"github.com/dukerupert/broadwave/internal/mailer"
 	"github.com/dukerupert/broadwave/internal/session"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AdminDeps struct {
-	Queries      *database.Queries
-	Sessions     *session.Store
-	Templates    *AdminTemplates
-	BaseURL      string
-	Username     string
-	PasswordHash string
+	Queries         *database.Queries
+	Sessions        *session.Store
+	Templates       *AdminTemplates
+	Mailer          *mailer.Mailer
+	BaseURL         string
+	PhysicalAddress string
+	Username        string
+	PasswordHash    string
 }
 
 type AdminTemplates struct {
@@ -25,6 +28,8 @@ type AdminTemplates struct {
 	ListDetail          *template.Template
 	ListSubscriberTable *template.Template
 	APIKeySection       *template.Template
+	Compose             *template.Template
+	MessageDetail       *template.Template
 }
 
 func (a *AdminDeps) HandleLogin(w http.ResponseWriter, r *http.Request) {
