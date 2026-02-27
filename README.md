@@ -18,6 +18,7 @@ Create a `config.toml` file (or pass a custom path with `-config`):
 [app]
 listen_addr = ":8090"
 base_url = "https://your-domain.com"
+cors_origins = ["https://your-frontend.com"]  # optional — origins allowed to call /api/subscribe via fetch
 
 [database]
 path = "broadwave.db"
@@ -125,7 +126,18 @@ HTMX (returns HTML fragment instead of redirect):
 | Invalid email or list | `400` `{"error": "..."}` | `400` plain text |
 | Rate limited | `429` `{"error": "Too many requests..."}` | `429` plain text |
 
+Cross-origin requests (detected via `Origin` header) always receive JSON responses instead of redirects.
+
 Rate limit: 5 requests per IP per hour.
+
+**CORS:** To call `/api/subscribe` from a different domain using `fetch()`, add the origin to `cors_origins` in your config:
+
+```toml
+[app]
+cors_origins = ["https://your-frontend.com", "https://www.your-frontend.com"]
+```
+
+The endpoint accepts `application/x-www-form-urlencoded`, `multipart/form-data`, and `application/json` request bodies.
 
 ### Confirm
 
@@ -147,7 +159,7 @@ Globally unsubscribes the email from all lists. Included automatically in every 
 
 The admin UI is at `/admin/` and requires login. From there you can:
 
-- **Lists** — view all lists, subscriber counts, and create API keys
+- **Lists** — view all lists, create new lists, subscriber counts, and create API keys
 - **List detail** — view/filter subscribers, add subscribers manually, export CSV, manage API keys
 - **Compose** — write and preview messages with template variables (`{{name}}`, `{{email}}`, `{{unsubscribe_url}}`)
 - **Messages** — view send status, delivery stats (sent/failed/bounced), and per-subscriber send logs
