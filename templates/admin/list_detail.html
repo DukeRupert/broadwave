@@ -6,6 +6,9 @@
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">{{.List.Name}}</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            Slug: <code class="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 font-mono">{{.List.Slug}}</code>
+        </p>
         {{if .List.Description}}
         <p class="text-sm text-gray-500 mt-1">{{.List.Description}}</p>
         {{end}}
