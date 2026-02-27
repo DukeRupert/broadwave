@@ -80,6 +80,7 @@ func main() {
 	adminSubscriberTable := template.Must(template.ParseFS(templateFS, "templates/admin/partials/subscriber_table.html"))
 	adminAPIKeySection := template.Must(template.ParseFS(templateFS, "templates/admin/partials/api_key_section.html"))
 
+	adminCreateList := template.Must(template.Must(adminLayout.Clone()).ParseFS(templateFS, "templates/admin/create_list.html"))
 	adminCompose := template.Must(template.Must(adminLayout.Clone()).ParseFS(templateFS, "templates/admin/compose.html"))
 	adminMessageDetail := template.Must(template.Must(adminLayout.Clone()).ParseFS(templateFS, "templates/admin/message_detail.html"))
 
@@ -94,6 +95,7 @@ func main() {
 		Templates: &handler.AdminTemplates{
 			Login:               adminLogin,
 			Dashboard:           adminDashboard,
+			CreateList:          adminCreateList,
 			ListDetail:          adminListDetail,
 			ListSubscriberTable: adminSubscriberTable,
 			APIKeySection:       adminAPIKeySection,
@@ -143,6 +145,8 @@ func main() {
 	// Admin protected routes
 	adminMux := http.NewServeMux()
 	adminMux.HandleFunc("GET /admin/", adminDeps.HandleDashboard)
+	adminMux.HandleFunc("GET /admin/lists/create", adminDeps.HandleCreateList)
+	adminMux.HandleFunc("POST /admin/lists/create", adminDeps.HandleCreateListSubmit)
 	adminMux.HandleFunc("GET /admin/lists/{id}", adminDeps.HandleListDetail)
 	adminMux.HandleFunc("POST /admin/lists/{id}/subscribers", adminDeps.HandleAddSubscriber)
 	adminMux.HandleFunc("POST /admin/lists/{id}/subscribers/{subscriberID}/remove", adminDeps.HandleRemoveSubscriber)

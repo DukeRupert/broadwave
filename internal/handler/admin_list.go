@@ -14,6 +14,50 @@ import (
 	"github.com/google/uuid"
 )
 
+func (a *AdminDeps) HandleCreateList(w http.ResponseWriter, r *http.Request) {
+	a.Templates.CreateList.ExecuteTemplate(w, "layout", nil)
+}
+
+func (a *AdminDeps) HandleCreateListSubmit(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(r.FormValue("name"))
+	slug := strings.TrimSpace(r.FormValue("slug"))
+	description := strings.TrimSpace(r.FormValue("description"))
+	fromName := strings.TrimSpace(r.FormValue("from_name"))
+	fromEmail := strings.TrimSpace(strings.ToLower(r.FormValue("from_email")))
+
+	if name == "" || slug == "" || fromName == "" || fromEmail == "" {
+		http.Error(w, "Name, slug, from name, and from email are required.", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := mail.ParseAddress(fromEmail); err != nil {
+		http.Error(w, "Invalid from email address.", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Check slug uniqueness
+	if _, err := a.Queries.GetListBySlug(ctx, slug); err == nil {
+		http.Error(w, "A list with that slug already exists.", http.StatusBadRequest)
+		return
+	}
+
+	id, err := a.Queries.CreateList(ctx, slug, name, description, fromName, fromEmail)
+	if err != nil {
+		log.Printf("Error creating list: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/admin/lists/%d", id), http.StatusSeeOther)
+}
+
 func (a *AdminDeps) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	listID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {

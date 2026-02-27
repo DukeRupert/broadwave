@@ -25,6 +25,7 @@ type AdminDeps struct {
 type AdminTemplates struct {
 	Login               *template.Template
 	Dashboard           *template.Template
+	CreateList          *template.Template
 	ListDetail          *template.Template
 	ListSubscriberTable *template.Template
 	APIKeySection       *template.Template

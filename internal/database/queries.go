@@ -19,6 +19,16 @@ func NewQueries(db *sql.DB) *Queries {
 	return &Queries{DB: db}
 }
 
+func (q *Queries) CreateList(ctx context.Context, slug, name, description, fromName, fromEmail string) (int64, error) {
+	result, err := q.DB.ExecContext(ctx, `
+		INSERT INTO lists (slug, name, description, from_name, from_email)
+		VALUES (?, ?, ?, ?, ?)`, slug, name, description, fromName, fromEmail)
+	if err != nil {
+		return 0, fmt.Errorf("creating list: %w", err)
+	}
+	return result.LastInsertId()
+}
+
 func (q *Queries) GetListBySlug(ctx context.Context, slug string) (*model.List, error) {
 	row := q.DB.QueryRowContext(ctx, `
 		SELECT id, slug, name, description, from_name, from_email, created_at
