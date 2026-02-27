@@ -31,6 +31,7 @@ type subscribeRequest struct {
 	List     string `json:"list"`
 	Website  string `json:"website"`  // honeypot
 	Redirect string `json:"redirect"` // custom redirect URL
+	APIKey   string `json:"api_key"`
 }
 
 func (d *Deps) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +62,13 @@ func (d *Deps) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// API key presence check
+	apiKey := extractAPIKey(r, req)
+	if apiKey == "" {
+		respondError(w, r, d.Templates.SubscribeError, http.StatusUnauthorized, "API key is required.")
+		return
+	}
+
 	// Validate email
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 	if _, err := mail.ParseAddress(email); err != nil || email == "" {
@@ -86,6 +94,18 @@ func (d *Deps) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Error looking up list: %v", err)
 		respondError(w, r, d.Templates.SubscribeError, http.StatusInternalServerError, "Something went wrong. Please try again.")
+		return
+	}
+
+	// Validate API key against list
+	valid, err := d.Queries.ValidateAPIKey(ctx, apiKey, list.ID)
+	if err != nil {
+		log.Printf("Error validating API key: %v", err)
+		respondError(w, r, d.Templates.SubscribeError, http.StatusInternalServerError, "Something went wrong. Please try again.")
+		return
+	}
+	if !valid {
+		respondError(w, r, d.Templates.SubscribeError, http.StatusForbidden, "Invalid API key for this list.")
 		return
 	}
 
@@ -162,6 +182,18 @@ func (d *Deps) redirectURL(custom string) string {
 	return d.DefaultRedirect
 }
 
+func extractAPIKey(r *http.Request, req *subscribeRequest) string {
+	// 1. From parsed request body (form field or JSON)
+	if req.APIKey != "" {
+		return req.APIKey
+	}
+	// 2. From Authorization: Bearer header
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimPrefix(auth, "Bearer ")
+	}
+	return ""
+}
+
 func parseSubscribeRequest(r *http.Request) (*subscribeRequest, error) {
 	ct := r.Header.Get("Content-Type")
 	if strings.Contains(ct, "application/json") {
@@ -181,5 +213,6 @@ func parseSubscribeRequest(r *http.Request) (*subscribeRequest, error) {
 		List:     r.FormValue("list"),
 		Website:  r.FormValue("website"),
 		Redirect: r.FormValue("redirect"),
+		APIKey:   r.FormValue("api_key"),
 	}, nil
 }

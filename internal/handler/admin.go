@@ -24,6 +24,7 @@ type AdminTemplates struct {
 	Dashboard           *template.Template
 	ListDetail          *template.Template
 	ListSubscriberTable *template.Template
+	APIKeySection       *template.Template
 }
 
 func (a *AdminDeps) HandleLogin(w http.ResponseWriter, r *http.Request) {

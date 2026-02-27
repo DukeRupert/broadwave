@@ -57,3 +57,12 @@ type MessageSummary struct {
 	SentCount int
 	CreatedAt time.Time
 }
+
+type APIKey struct {
+	ID        int64
+	ListID    int64
+	KeyPrefix string
+	Label     string
+	CreatedAt time.Time
+	RevokedAt *time.Time
+}

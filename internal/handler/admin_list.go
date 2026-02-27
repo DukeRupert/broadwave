@@ -14,6 +14,92 @@ import (
 	"github.com/google/uuid"
 )
 
+func (a *AdminDeps) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
+	listID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid list ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	label := strings.TrimSpace(r.FormValue("label"))
+
+	ctx := r.Context()
+
+	// Verify list exists
+	if _, err := a.Queries.GetListByID(ctx, listID); err != nil {
+		http.Error(w, "List not found", http.StatusNotFound)
+		return
+	}
+
+	fullKey, prefix, err := generateAPIKey()
+	if err != nil {
+		log.Printf("Error generating API key: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := a.Queries.CreateAPIKey(ctx, listID, fullKey, prefix, label); err != nil {
+		log.Printf("Error creating API key: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch updated keys list for re-rendering
+	keys, err := a.Queries.GetAPIKeysByList(ctx, listID)
+	if err != nil {
+		log.Printf("Error fetching API keys: %v", err)
+	}
+
+	data := map[string]any{
+		"ListID":    listID,
+		"APIKeys":   keys,
+		"NewKey":    fullKey,
+		"NewPrefix": prefix,
+	}
+
+	a.Templates.APIKeySection.Execute(w, data)
+}
+
+func (a *AdminDeps) HandleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
+	listID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid list ID", http.StatusBadRequest)
+		return
+	}
+
+	keyID, err := strconv.ParseInt(r.PathValue("keyID"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid key ID", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	if err := a.Queries.RevokeAPIKey(ctx, keyID, listID); err != nil {
+		log.Printf("Error revoking API key: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch updated keys list for re-rendering
+	keys, err := a.Queries.GetAPIKeysByList(ctx, listID)
+	if err != nil {
+		log.Printf("Error fetching API keys: %v", err)
+	}
+
+	data := map[string]any{
+		"ListID":  listID,
+		"APIKeys": keys,
+	}
+
+	a.Templates.APIKeySection.Execute(w, data)
+}
+
 func (a *AdminDeps) HandleListDetail(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -42,10 +128,17 @@ func (a *AdminDeps) HandleListDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	apiKeys, err := a.Queries.GetAPIKeysByList(ctx, id)
+	if err != nil {
+		log.Printf("Error fetching API keys: %v", err)
+	}
+
 	data := map[string]any{
 		"List":         list,
 		"Subscribers":  subscribers,
 		"StatusFilter": statusFilter,
+		"APIKeys":      apiKeys,
+		"ListID":       list.ID,
 	}
 
 	if isHTMX(r) {

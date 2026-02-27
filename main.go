@@ -75,8 +75,10 @@ func main() {
 	adminDashboard := template.Must(template.Must(adminLayout.Clone()).ParseFS(templateFS, "templates/admin/dashboard.html"))
 	adminListDetail := template.Must(template.Must(adminLayout.Clone()).ParseFS(templateFS,
 		"templates/admin/list_detail.html",
-		"templates/admin/partials/subscriber_table.html"))
+		"templates/admin/partials/subscriber_table.html",
+		"templates/admin/partials/api_key_section.html"))
 	adminSubscriberTable := template.Must(template.ParseFS(templateFS, "templates/admin/partials/subscriber_table.html"))
+	adminAPIKeySection := template.Must(template.ParseFS(templateFS, "templates/admin/partials/api_key_section.html"))
 
 	adminDeps := &handler.AdminDeps{
 		Queries:      queries,
@@ -89,6 +91,7 @@ func main() {
 			Dashboard:           adminDashboard,
 			ListDetail:          adminListDetail,
 			ListSubscriberTable: adminSubscriberTable,
+			APIKeySection:       adminAPIKeySection,
 		},
 	}
 
@@ -122,6 +125,8 @@ func main() {
 	adminMux.HandleFunc("POST /admin/lists/{id}/subscribers", adminDeps.HandleAddSubscriber)
 	adminMux.HandleFunc("POST /admin/lists/{id}/subscribers/{subscriberID}/remove", adminDeps.HandleRemoveSubscriber)
 	adminMux.HandleFunc("GET /admin/lists/{id}/export", adminDeps.HandleExportCSV)
+	adminMux.HandleFunc("POST /admin/lists/{id}/keys", adminDeps.HandleCreateAPIKey)
+	adminMux.HandleFunc("POST /admin/lists/{id}/keys/{keyID}/revoke", adminDeps.HandleRevokeAPIKey)
 	mux.Handle("/admin/", adminDeps.AuthMiddleware(adminMux))
 
 	srv := &http.Server{

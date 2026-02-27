@@ -2,7 +2,9 @@ package database
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -278,6 +280,80 @@ func (q *Queries) UnsubscribeGlobal(ctx context.Context, subscriberID int64) err
 	}
 
 	return tx.Commit()
+}
+
+func sha256Hex(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])
+}
+
+func (q *Queries) ValidateAPIKey(ctx context.Context, rawKey string, listID int64) (bool, error) {
+	hash := sha256Hex(rawKey)
+	var count int
+	err := q.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM api_keys
+		WHERE key_hash = ? AND list_id = ? AND revoked_at IS NULL`, hash, listID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (q *Queries) CreateAPIKey(ctx context.Context, listID int64, rawKey, prefix, label string) (int64, error) {
+	hash := sha256Hex(rawKey)
+	result, err := q.DB.ExecContext(ctx, `
+		INSERT INTO api_keys (list_id, key_prefix, key_hash, label)
+		VALUES (?, ?, ?, ?)`, listID, prefix, hash, label)
+	if err != nil {
+		return 0, fmt.Errorf("creating api key: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+func (q *Queries) RevokeAPIKey(ctx context.Context, keyID, listID int64) error {
+	result, err := q.DB.ExecContext(ctx, `
+		UPDATE api_keys SET revoked_at = datetime('now')
+		WHERE id = ? AND list_id = ? AND revoked_at IS NULL`, keyID, listID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("api key not found or already revoked")
+	}
+	return nil
+}
+
+func (q *Queries) GetAPIKeysByList(ctx context.Context, listID int64) ([]model.APIKey, error) {
+	rows, err := q.DB.QueryContext(ctx, `
+		SELECT id, list_id, key_prefix, label, created_at, revoked_at
+		FROM api_keys WHERE list_id = ?
+		ORDER BY created_at DESC`, listID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.APIKey
+	for rows.Next() {
+		var k model.APIKey
+		var createdAt string
+		var revokedAt sql.NullString
+		err := rows.Scan(&k.ID, &k.ListID, &k.KeyPrefix, &k.Label, &createdAt, &revokedAt)
+		if err != nil {
+			return nil, err
+		}
+		k.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+		if revokedAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", revokedAt.String)
+			k.RevokedAt = &t
+		}
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
 }
 
 func scanSubscriber(row *sql.Row) (*model.Subscriber, error) {
