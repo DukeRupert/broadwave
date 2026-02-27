@@ -27,8 +27,9 @@ type AdminConfig struct {
 }
 
 type AppConfig struct {
-	ListenAddr string `toml:"listen_addr"`
-	BaseURL    string `toml:"base_url"`
+	ListenAddr  string   `toml:"listen_addr"`
+	BaseURL     string   `toml:"base_url"`
+	CORSOrigins []string `toml:"cors_origins"`
 }
 
 type DatabaseConfig struct {

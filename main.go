@@ -133,7 +133,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Public routes
-	mux.HandleFunc("POST /api/subscribe", deps.HandleSubscribe)
+	subscribeCORS := handler.CORSMiddleware(cfg.App.CORSOrigins)
+	mux.Handle("/api/subscribe", subscribeCORS(http.HandlerFunc(deps.HandleSubscribe)))
 	mux.HandleFunc("GET /confirm/{token}", deps.HandleConfirm)
 	mux.HandleFunc("GET /unsubscribe/{token}", deps.HandleUnsubscribe)
 
