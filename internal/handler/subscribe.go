@@ -204,8 +204,14 @@ func parseSubscribeRequest(r *http.Request) (*subscribeRequest, error) {
 		return &req, nil
 	}
 
-	if err := r.ParseForm(); err != nil {
-		return nil, err
+	if strings.Contains(ct, "multipart/form-data") {
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			return nil, err
+		}
 	}
 	return &subscribeRequest{
 		Email:    r.FormValue("email"),
