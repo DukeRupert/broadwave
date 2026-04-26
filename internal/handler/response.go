@@ -32,6 +32,11 @@ func isJSON(r *http.Request) bool {
 
 func respondSuccess(w http.ResponseWriter, r *http.Request, tmpl *template.Template, redirectURL string, jsonData any) {
 	if isHTMX(r) {
+		if redirectURL != "" {
+			w.Header().Set("HX-Redirect", redirectURL)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		tmpl.Execute(w, nil)
 		return
@@ -43,7 +48,13 @@ func respondSuccess(w http.ResponseWriter, r *http.Request, tmpl *template.Templ
 		return
 	}
 
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	if redirectURL != "" {
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.Execute(w, nil)
 }
 
 func respondError(w http.ResponseWriter, r *http.Request, tmpl *template.Template, status int, message string) {
